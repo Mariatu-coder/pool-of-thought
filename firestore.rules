@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidThought(data) {
+      return data.keys().hasAll(['content', 'userId', 'createdAt', 'jewelType'])
+        && data.keys().size() <= 6
+        && data.content is string && data.content.size() <= 5000
+        && (data.get('title', '') is string && data.get('title', '').size() <= 200)
+        && data.userId == request.auth.uid
+        && data.jewelType in ['diamond', 'emerald', 'ruby', 'sapphire', 'amethyst', 'topaz']
+        && (data.get('relatedTo', []) is list && data.get('relatedTo', []).size() <= 50);
+    }
+
+    match /thoughts/{thoughtId} {
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn()
+        && isValidId(thoughtId)
+        && isValidThought(incoming())
+        && incoming().createdAt == request.time;
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && isValidThought(incoming())
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && (
+          incoming().diff(existing()).affectedKeys().hasAny(['relatedTo', 'content', 'title', 'jewelType'])
+          && incoming().diff(existing()).affectedKeys().hasOnly(['relatedTo', 'content', 'title', 'jewelType'])
+        );
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+  }
+}

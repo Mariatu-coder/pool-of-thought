@@ -1,0 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Inter:wght@300;400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Cormorant Garamond", serif;
+  --font-sans: "Inter", sans-serif;
+  
+  --color-gold: #D4AF37;
+  --color-gold-muted: #A09A94;
+  --color-bg-main: #0A0A0A;
+  --color-bg-side: #0D0D0D;
+  --color-bg-card: #161616;
+  --color-border-dim: #2A2A2A;
+}
+
+@layer base {
+  body {
+    @apply bg-bg-main text-[#E0D7D0] min-h-screen overflow-hidden;
+    font-family: var(--font-sans);
+  }
+}
+
+@layer components {
+  .jewel-glow-diamond { shadow: 0 0 15px rgba(255, 255, 255, 0.3); }
+  .jewel-glow-emerald { shadow: 0 0 15px rgba(16, 185, 129, 0.3); }
+  .jewel-glow-ruby { shadow: 0 0 15px rgba(239, 68, 68, 0.3); }
+  .jewel-glow-sapphire { shadow: 0 0 15px rgba(59, 130, 246, 0.3); }
+  .jewel-glow-amethyst { shadow: 0 0 15px rgba(168, 85, 247, 0.3); }
+  .jewel-glow-topaz { shadow: 0 0 15px rgba(245, 158, 11, 0.3); }
+
+  .jewel-circle {
+    @apply w-8 h-8 rounded-full transition-all duration-500;
+  }
+  
+  .glass-panel {
+    @apply bg-bg-card/80 backdrop-blur-xl border border-border-dim rounded-2xl;
+  }
+
+  .label-caps {
+    @apply text-[11px] uppercase tracking-[0.2em] font-semibold;
+  }
+}

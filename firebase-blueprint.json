@@ -1,0 +1,24 @@
+{
+  "entities": {
+    "Thought": {
+      "title": "Thought",
+      "description": "A precious thought captured as a jewel.",
+      "type": "object",
+      "properties": {
+        "content": { "type": "string", "description": "The text of the thought." },
+        "title": { "type": "string", "description": "An optional title or greeting for the letter-style thought." },
+        "userId": { "type": "string", "description": "The owner of the thought." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the thought was born." },
+        "jewelType": { "type": "string", "enum": ["diamond", "emerald", "ruby", "sapphire", "amethyst", "topaz"], "description": "The aesthetic representation of the thought." },
+        "relatedTo": { "type": "array", "items": { "type": "string" }, "description": "IDs of similar thoughts." }
+      },
+      "required": ["content", "userId", "createdAt", "jewelType"]
+    }
+  },
+  "firestore": {
+    "thoughts": {
+      "schema": "Thought",
+      "description": "A collection of all precious thoughts."
+    }
+  }
+}
