@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
-import { auth, signIn, signOut, db } from './firebase';
+import { auth, signInWithGoogle, signInGuest, signOut, db } from './firebase';
 import { analyzeThought, JewelType } from './gemini';
 import { motion, AnimatePresence } from 'motion/react';
-import { LogIn, LogOut, PenTool, Sparkles, X, Heart, Link as LinkIcon, Scroll } from 'lucide-react';
+import { LogIn, LogOut, PenTool, Sparkles, X, Heart, Link as LinkIcon, Scroll, Sparkle, UserCheck } from 'lucide-react';
 
 // --- Types ---
 interface Thought {
@@ -20,6 +20,39 @@ interface Thought {
 // --- Components ---
 
 function AuthView() {
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleGoogleSignIn = async () => {
+    setAuthError(null);
+    setLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (err: any) {
+      console.warn("Google sign-in error:", err);
+      if (err?.code === 'auth/popup-blocked') {
+        setAuthError("Popup was blocked by the browser. Try 'Enter as Guest' below or allow popups.");
+      } else {
+        setAuthError(err?.message || "Sign-in failed. You can use 'Enter as Guest'.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGuestSignIn = async () => {
+    setAuthError(null);
+    setLoading(true);
+    try {
+      await signInGuest();
+    } catch (err: any) {
+      console.warn("Guest sign-in error:", err);
+      setAuthError(err?.message || "Could not sign in as guest.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen text-center bg-bg-main p-8 overflow-hidden relative">
       {/* Decorative Atmosphere */}
@@ -29,30 +62,53 @@ function AuthView() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="space-y-6 relative z-10"
+        className="space-y-6 relative z-10 max-w-xl mx-auto"
       >
         <div className="flex items-center justify-center gap-4 mb-4">
           <div className="w-12 h-0.5 bg-gold/20" />
           <div className="w-3 h-3 rounded-full bg-gold shadow-[0_0_15px_#D4AF37]" />
           <div className="w-12 h-0.5 bg-gold/20" />
         </div>
-        <h1 className="text-7xl font-serif font-light tracking-tight text-white italic">
+        <h1 className="text-6xl md:text-7xl font-serif font-light tracking-tight text-white italic">
           Bag of Thoughts
         </h1>
-        <p className="text-gold-muted font-serif italic text-xl max-w-lg mx-auto leading-relaxed">
+        <p className="text-gold-muted font-serif italic text-lg md:text-xl leading-relaxed">
           "A sanctuary where every whisper of the mind is polished into a timeless treasure."
         </p>
-        <div className="pt-12">
+
+        {authError && (
+          <div className="p-3 bg-red-950/40 border border-red-500/30 rounded-xl text-red-200 text-xs italic">
+            {authError}
+          </div>
+        )}
+
+        <div className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={signIn}
-            className="group flex items-center gap-4 px-10 py-5 bg-transparent border border-gold/30 hover:border-gold transition-all rounded-full text-sm uppercase tracking-[0.2em] font-semibold text-gold"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            disabled={loading}
+            onClick={handleGoogleSignIn}
+            className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-gold text-black hover:bg-[#F2D17D] transition-all rounded-full text-xs uppercase tracking-[0.2em] font-bold shadow-[0_0_20px_rgba(212,175,55,0.25)] cursor-pointer disabled:opacity-50"
           >
-            <LogIn size={18} className="group-hover:translate-x-1 transition-transform" />
-            Enter the Sanctuary
+            <LogIn size={16} />
+            {loading ? "Opening..." : "Sign In with Google"}
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            disabled={loading}
+            onClick={handleGuestSignIn}
+            className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-transparent border border-white/20 hover:border-gold/60 text-white/80 hover:text-white transition-all rounded-full text-xs uppercase tracking-[0.2em] font-semibold cursor-pointer disabled:opacity-50"
+          >
+            <Sparkle size={16} className="text-gold" />
+            Enter as Guest
           </motion.button>
         </div>
+        
+        <p className="text-[11px] text-[#555] tracking-widest uppercase pt-4 font-sans">
+          Protected with Cloud Firestore • Real-time Sync
+        </p>
       </motion.div>
     </div>
   );

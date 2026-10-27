@@ -13,55 +13,70 @@ export async function analyzeThought(
   content: string,
   existingThoughts: { id: string; content: string }[]
 ): Promise<ThoughtAnalysis> {
-  const model = "gemini-3-flash-preview";
-  
-  const prompt = `
-    Analyze the following thought (written like a letter) and categorize it into one of these jewel types based on its mood:
-    - diamond (clear, pure, objective, sharp)
-    - emerald (growth, nature, calm, healing)
-    - ruby (passion, love, anger, intense)
-    - sapphire (wisdom, depth, sadness, truth)
-    - amethyst (spiritual, mysterious, creative)
-    - topaz (warmth, friendship, joy, light)
+  // Graceful fallback keywords in case API key is absent or request fails
+  const fallbackJewel = (): JewelType => {
+    const lower = content.toLowerCase();
+    if (lower.match(/love|heart|passion|furious|anger|burn|fire/)) return 'ruby';
+    if (lower.match(/grow|nature|heal|peace|calm|quiet|forest|breathe/)) return 'emerald';
+    if (lower.match(/sad|grief|deep|truth|cry|tear|sorrow|ocean|night/)) return 'sapphire';
+    if (lower.match(/dream|mystery|soul|magic|spirit|cosmic|star/)) return 'amethyst';
+    if (lower.match(/joy|friend|warm|laugh|light|sun|gold|smile/)) return 'topaz';
+    return 'diamond';
+  };
 
-    Also, compare it with the existing thoughts provided and return the IDs of any that share a deep thematic similarity.
-
-    New Thought: "${content}"
-
-    Existing Thoughts:
-    ${existingThoughts.map(t => `ID: ${t.id} | Content: ${t.content}`).join('\n')}
-  `;
-
-  const response = await ai.models.generateContent({
-    model,
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          jewelType: {
-            type: Type.STRING,
-            enum: ['diamond', 'emerald', 'ruby', 'sapphire', 'amethyst', 'topaz'],
-          },
-          relatedThoughtIds: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-          },
-        },
-        required: ["jewelType", "relatedThoughtIds"],
-      },
-    },
-  });
+  const apiKey = process.env.GEMINI_API_KEY || (typeof window !== 'undefined' && (window as any).__GEMINI_API_KEY__) || '';
+  if (!apiKey) {
+    return { jewelType: fallbackJewel(), relatedThoughtIds: [] };
+  }
 
   try {
+    const model = "gemini-2.5-flash";
+    const prompt = `
+      Analyze the following thought (written like a letter) and categorize it into one of these jewel types based on its mood:
+      - diamond (clear, pure, objective, sharp)
+      - emerald (growth, nature, calm, healing)
+      - ruby (passion, love, anger, intense)
+      - sapphire (wisdom, depth, sadness, truth)
+      - amethyst (spiritual, mysterious, creative)
+      - topaz (warmth, friendship, joy, light)
+
+      Also, compare it with the existing thoughts provided and return the IDs of any that share a deep thematic similarity.
+
+      New Thought: "${content}"
+
+      Existing Thoughts:
+      ${existingThoughts.map(t => `ID: ${t.id} | Content: ${t.content}`).join('\n')}
+    `;
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            jewelType: {
+              type: Type.STRING,
+              enum: ['diamond', 'emerald', 'ruby', 'sapphire', 'amethyst', 'topaz'],
+            },
+            relatedThoughtIds: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+            },
+          },
+          required: ["jewelType", "relatedThoughtIds"],
+        },
+      },
+    });
+
     const data = JSON.parse(response.text || '{}');
     return {
-      jewelType: data.jewelType || 'diamond',
-      relatedThoughtIds: data.relatedThoughtIds || [],
+      jewelType: data.jewelType || fallbackJewel(),
+      relatedThoughtIds: Array.isArray(data.relatedThoughtIds) ? data.relatedThoughtIds : [],
     };
   } catch (e) {
-    console.error("Failed to parse Gemini response", e);
-    return { jewelType: 'diamond', relatedThoughtIds: [] };
+    console.warn("Gemini thought analysis fallback engaged:", e);
+    return { jewelType: fallbackJewel(), relatedThoughtIds: [] };
   }
 }
